@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Empresa {
+  id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome       String      @db.VarChar(255)
+  cnpj       String      @unique @db.Char(14)
+  numFunc    Int         @map("num_func")
+  criadoEm  DateTime    @default(now()) @map("criado_em")
+  tenantId   String?     @map("tenant_id") @db.Uuid
+  setores    Setor[]
+  usuarios   Usuario[]
+  evidencias Evidencia[]
+  relatorios Relatorio[]
+
+  @@map("empresas")
+}
+
+model Usuario {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  empresaId String   @map("empresa_id") @db.Uuid
+  email     String   @unique @db.VarChar(255)
+  senhaHash String   @map("senha_hash") @db.VarChar(255)
+  nome      String?  @db.VarChar(255)
+  role      String   @default("admin") @db.VarChar(50)
+  criadoEm DateTime @default(now()) @map("criado_em")
+  empresa   Empresa  @relation(fields: [empresaId], references: [id])
+
+  @@map("usuarios")
+}
+
+model Setor {
+  id        String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  empresaId String                 @map("empresa_id") @db.Uuid
+  nome      String                 @db.VarChar(255)
+  numFunc   Int?                   @map("num_func")
+  criadoEm DateTime               @default(now()) @map("criado_em")
+  empresa   Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  respostas RespostaQuestionario[]
+  riscos    Risco[]
+
+  @@map("setores")
+}
+
+model Pergunta {
+  id        String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoria String                 @db.VarChar(100)
+  texto     String
+  ordem     Int
+  ativo     Boolean                @default(true)
+  respostas RespostaQuestionario[]
+
+  @@unique([ordem])
+  @@map("perguntas")
+}
+
+model RespostaQuestionario {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  setorId      String   @map("setor_id") @db.Uuid
+  perguntaId   String   @map("pergunta_id") @db.Uuid
+  valor        Int
+  respondidoEm DateTime @default(now()) @map("respondido_em")
+  setor        Setor    @relation(fields: [setorId], references: [id], onDelete: Cascade)
+  pergunta     Pergunta @relation(fields: [perguntaId], references: [id])
+
+  @@unique([setorId, perguntaId])
+  @@map("respostas_questionario")
+}
+
+model Evidencia {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  empresaId  String   @map("empresa_id") @db.Uuid
+  label      String   @db.VarChar(255)
+  tipo       String?  @db.VarChar(50)
+  urlArquivo String   @map("url_arquivo") @db.VarChar(1000)
+  tamanhoKb  Int?     @map("tamanho_kb")
+  criadoEm  DateTime @default(now()) @map("criado_em")
+  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@map("evidencias")
+}
+
+model Risco {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  setorId       String      @map("setor_id") @db.Uuid
+  descricao     String
+  categoria     String?     @db.VarChar(100)
+  probabilidade String      @db.VarChar(20)
+  severidade    String      @db.VarChar(20)
+  classificacao String      @db.VarChar(20)
+  justificativa String
+  criadoEm     DateTime    @default(now()) @map("criado_em")
+  setor         Setor       @relation(fields: [setorId], references: [id], onDelete: Cascade)
+  planoAcao     PlanoAcao[]
+
+  @@map("riscos")
+}
+
+model PlanoAcao {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  riscoId        String   @map("risco_id") @db.Uuid
+  whatAcao       String   @map("what_acao")
+  whyJustif      String   @map("why_justif")
+  whoResponsavel String   @map("who_responsavel") @db.VarChar(255)
+  whereLocal     String?  @map("where_local") @db.VarChar(255)
+  whenPrazo      DateTime @map("when_prazo") @db.Date
+  howExecucao    String   @map("how_execucao")
+  howMuchCusto   Decimal? @map("how_much_custo") @db.Decimal(10, 2)
+  status         String   @default("nao_iniciado") @db.VarChar(30)
+  criadoEm      DateTime @default(now()) @map("criado_em")
+  atualizadoEm  DateTime @default(now()) @map("atualizado_em")
+  risco          Risco    @relation(fields: [riscoId], references: [id], onDelete: Cascade)
+
+  @@map("plano_acao")
+}
+
+model Relatorio {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  empresaId   String    @map("empresa_id") @db.Uuid
+  versao      String    @default("1.0") @db.VarChar(20)
+  responsavel String    @db.VarChar(255)
+  urlPdf      String?   @map("url_pdf") @db.VarChar(1000)
+  status      String    @default("rascunho") @db.VarChar(20)
+  geradoEm   DateTime? @map("gerado_em")
+  criadoEm   DateTime  @default(now()) @map("criado_em")
+  empresa     Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@map("relatorios")
+}
