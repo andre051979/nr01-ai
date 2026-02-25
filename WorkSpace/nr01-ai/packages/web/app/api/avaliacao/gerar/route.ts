@@ -53,6 +53,7 @@ export async function POST() {
             classificacao: resultado.classificacao,
             justificativa: '',
           },
+          include: { setor: { select: { nome: true } } },
         })
         novosRiscos.push(risco)
       }
